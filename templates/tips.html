@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Sleep Tips – SleepSense AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">💡 Sleep Tips & Recommendations</h1>
+    <p class="page-sub">AI-curated advice for every sleep condition detected by our system.</p>
+  </div>
+</div>
+
+<!-- Disorder Cards -->
+<div class="tips-disorders-grid">
+
+  {% set disorders = [
+    {
+      'name': 'Normal Sleep',
+      'icon': '😴',
+      'color': '#34d399',
+      'bg': 'rgba(52,211,153,0.08)',
+      'desc': 'Your sleep patterns are healthy. Maintain your current habits for long-term wellbeing.',
+      'tips': [
+        ('⏰', 'Keep Your Schedule', 'Stick to the same wake/sleep times even on weekends. Consistency reinforces your circadian rhythm.'),
+        ('🎯', 'Optimize Sleep Duration', 'Adults need 7–9 hours. Track your natural wake-up time without an alarm to find your ideal length.'),
+        ('☕', 'Caffeine Cutoff', 'Caffeine has a 5-hour half-life. Stop consuming it by 2 PM to avoid impacting sleep onset.'),
+        ('📵', 'Maintain Screen Limits', 'Even if sleep is normal, reducing blue light 30 min before bed protects melatonin production.')
+      ]
+    },
+    {
+      'name': 'Insomnia',
+      'icon': '😫',
+      'color': '#f87171',
+      'bg': 'rgba(248,113,113,0.08)',
+      'desc': 'Difficulty falling or staying asleep. High movement and noise are key contributing factors.',
+      'tips': [
+        ('🌬️', '4-7-8 Breathing', 'Inhale for 4 seconds, hold for 7, exhale for 8. This activates the parasympathetic nervous system.'),
+        ('🌡️', 'Cool Your Room', 'Body temperature must drop to initiate sleep. Keep bedroom at 65–68°F (18–20°C).'),
+        ('🔇', 'Reduce Noise', 'Use earplugs or white noise machines to mask disruptive environmental sounds.'),
+        ('🛏️', 'Bed = Sleep Only', 'Avoid working or watching TV in bed. Your brain must associate the bed strictly with sleep.')
+      ]
+    },
+    {
+      'name': 'Poor Sleep Habit',
+      'icon': '📱',
+      'color': '#f59e0b',
+      'bg': 'rgba(245,158,11,0.08)',
+      'desc': 'Behavioral patterns are disrupting sleep quality. Screen usage before bed is the primary culprit.',
+      'tips': [
+        ('📵', 'Phone Lock Time', 'Set Do Not Disturb mode 45 minutes before sleep. Use app timers to enforce it automatically.'),
+        ('📖', 'Wind-Down Ritual', 'Replace screen time with reading, journaling, or light stretching. Do this for 21 days to form a habit.'),
+        ('🍽️', 'No Late Meals', 'Eating within 3 hours of sleep forces digestive activity that disrupts sleep architecture.'),
+        ('🚫', 'Alcohol Awareness', 'Alcohol feels sedating but reduces REM sleep by up to 25%. Avoid it 3+ hours before bed.')
+      ]
+    },
+    {
+      'name': 'Restless Sleep',
+      'icon': '😤',
+      'color': '#a78bfa',
+      'bg': 'rgba(167,139,250,0.08)',
+      'desc': 'Frequent movement and micro-arousals without a clear single cause. Multi-factor intervention needed.',
+      'tips': [
+        ('💪', 'Progressive Muscle Relaxation', 'Tense each muscle group for 5 seconds then release, from toes to forehead. Takes 15 minutes.'),
+        ('🧴', 'Magnesium Glycinate', 'Studies show magnesium helps muscle relaxation and improves sleep quality. Consult your doctor.'),
+        ('🛏️', 'Upgrade Sleep Environment', 'Check mattress (replace every 7–10 years), pillow loft, and room temperature.'),
+        ('🏃', 'Exercise Timing', 'Exercise improves deep sleep but avoid intense workouts within 4 hours of bedtime.')
+      ]
+    }
+  ] %}
+
+  {% for d in disorders %}
+  <div class="disorder-card" style="border-top: 3px solid {{ d.color }}; background: {{ d.bg }};">
+    <div class="disorder-card-header">
+      <div class="disorder-icon" style="background:{{ d.bg }};border:1px solid {{ d.color }}40;">{{ d.icon }}</div>
+      <div>
+        <h3 class="disorder-name" style="color:{{ d.color }}">{{ d.name }}</h3>
+        <p class="disorder-desc">{{ d.desc }}</p>
+      </div>
+    </div>
+    <div class="disorder-tips">
+      {% for icon, title, text in d.tips %}
+      <div class="disorder-tip">
+        <span class="dtip-icon">{{ icon }}</span>
+        <div>
+          <div class="dtip-title">{{ title }}</div>
+          <div class="dtip-text">{{ text }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Universal Hygiene -->
+<div class="section-card" style="margin-top:24px;">
+  <h3 class="chart-title" style="margin-bottom:20px;">🌙 Universal Sleep Hygiene Rules</h3>
+  <div class="hygiene-grid">
+    {% for icon, title, text in [
+      ('⏰','Consistent Schedule','Wake and sleep at the same time daily — even on weekends — to lock in your circadian rhythm.'),
+      ('🌑','Dark Room','Use blackout curtains. Even small amounts of light suppress melatonin and reduce sleep quality.'),
+      ('🌡️','Cool Temperature','65–68°F (18–20°C) is optimal. Your core body temperature must drop to initiate deep sleep.'),
+      ('📵','No Screens Before Bed','Blue light from phones blocks melatonin production for up to 2 hours after exposure.'),
+      ('🏃','Daily Exercise','30 minutes of moderate exercise increases deep (N3) sleep duration significantly.'),
+      ('🧘','Stress Management','Chronic stress keeps cortisol elevated. Try mindfulness, journaling, or therapy.')
+    ] %}
+    <div class="hygiene-card">
+      <div class="hygiene-icon">{{ icon }}</div>
+      <div class="hygiene-title">{{ title }}</div>
+      <div class="hygiene-text">{{ text }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Sleep Stages Info -->
+<div class="section-card" style="margin-top:24px;">
+  <h3 class="chart-title" style="margin-bottom:20px;">🧠 Understanding Sleep Stages</h3>
+  <div class="stages-grid">
+    {% for stage, dur, desc, color in [
+      ('Stage 1 (N1)', '5 min', 'Light sleep transition. Easily awakened. Muscle twitches common.', '#64748b'),
+      ('Stage 2 (N2)', '25 min', 'True sleep. Heart rate slows, body temp drops, memory consolidation begins.', '#818cf8'),
+      ('Stage 3 (N3)', '40 min', 'Deep sleep (slow-wave). Most restorative. Immune function, tissue repair.', '#38bdf8'),
+      ('REM Sleep',    '90 min', 'Dreaming stage. Critical for emotional processing and memory. High brain activity.', '#34d399')
+    ] %}
+    <div class="stage-card" style="border-left: 3px solid {{ color }};">
+      <div class="stage-name" style="color:{{ color }}">{{ stage }}</div>
+      <div class="stage-dur">~{{ dur }} per cycle</div>
+      <div class="stage-desc">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

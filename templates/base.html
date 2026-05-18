@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}SleepSense AI{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  {% if session.get('username') %}
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🌙</div>
+      <div>
+        <div class="brand-name">SleepSense</div>
+        <div class="brand-sub">AI DETECTION</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">🏠</span><span>Dashboard</span>
+      </a>
+      <a href="{{ url_for('analysis') }}" class="nav-item {% if request.endpoint == 'analysis' %}active{% endif %}">
+        <span class="nav-icon">🔬</span><span>Analysis</span>
+      </a>
+      <a href="{{ url_for('history') }}" class="nav-item {% if request.endpoint == 'history' %}active{% endif %}">
+        <span class="nav-icon">📋</span><span>History</span>
+      </a>
+      <a href="{{ url_for('tips') }}" class="nav-item {% if request.endpoint == 'tips' %}active{% endif %}">
+        <span class="nav-icon">💡</span><span>Sleep Tips</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ session['username'][0]|upper }}</div>
+      <div class="user-info">
+        <div class="user-name">{{ session['username'] }}</div>
+        <div class="user-status">● Active</div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="Sign Out">⏏</a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% else %}
+    {% block auth_content %}{% endblock %}
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

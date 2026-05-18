@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}History – SleepSense AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📋 Sleep History</h1>
+    <p class="page-sub">All sensor records and AI predictions for <strong>{{ username }}</strong>.</p>
+  </div>
+</div>
+
+<!-- Weekly CSV data -->
+<div class="section-card" style="margin-bottom:24px;">
+  <div class="section-header">
+    <h3 class="chart-title">📊 Sensor CSV Data — Weekly Breakdown</h3>
+    <span class="badge-count">{{ weekly|length }} days</span>
+  </div>
+  <div class="charts-row" style="margin-bottom:24px;">
+    <div style="flex:2">
+      <canvas id="weeklyLine" height="100"></canvas>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Day</th><th>Avg Movement (m/s²)</th><th>Noise (dB)</th><th>Screen Usage</th><th>Disorder</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        {% for w in weekly %}
+        <tr>
+          <td><strong>{{ w.day }}</strong></td>
+          <td class="td-mono">{{ w.movement }}</td>
+          <td class="td-mono">{{ w.noise }}</td>
+          <td>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" style="width:{{ w.screen }}%;background:#f59e0b;"></div>
+            </div>
+            <span class="td-muted">{{ w.screen }}%</span>
+          </td>
+          <td><span class="badge disorder-{{ w.disorder|replace(' ','_') }}">{{ w.disorder }}</span></td>
+          <td>
+            <span class="score-pill {{ 'good' if w.score >= 75 else 'warn' if w.score >= 50 else 'bad' }}">
+              {{ w.score }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- User analyses -->
+<div class="section-card">
+  <div class="section-header">
+    <h3 class="chart-title">🔬 My Analysis Sessions</h3>
+    <span class="badge-count">{{ records|length }} records</span>
+  </div>
+
+  {% if records %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Date & Time</th><th>Movement</th><th>Noise</th><th>Screen</th><th>Disorder</th><th>Confidence</th><th>Score</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td class="td-muted">{{ r.recorded_at[:16] }}</td>
+          <td class="td-mono">{{ "%.2f"|format(r.movement) }}</td>
+          <td class="td-mono">{{ r.noise }}</td>
+          <td><span class="badge-screen {{ 'on' if r.screen else 'off' }}">{{ 'ON' if r.screen else 'OFF' }}</span></td>
+          <td><span class="badge disorder-{{ r.predicted_disorder|replace(' ','_') }}">{{ r.predicted_disorder }}</span></td>
+          <td>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" style="width:{{ r.confidence }}%;background:#38bdf8;"></div>
+            </div>
+            <span class="td-muted">{{ r.confidence }}%</span>
+          </td>
+          <td>
+            <span class="score-pill {{ 'good' if r.sleep_score >= 75 else 'warn' if r.sleep_score >= 50 else 'bad' }}">
+              {{ r.sleep_score }}
+            </span>
+          </td>
+          <td class="td-muted">{{ r.notes[:30] if r.notes else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔬</div>
+    <p>No analyses yet. <a href="{{ url_for('analysis') }}">Start your first analysis →</a></p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const weekly = {{ weekly | tojson }};
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = 'Space Grotesk';
+
+const ctx = document.getElementById('weeklyLine').getContext('2d');
+const g1 = ctx.createLinearGradient(0,0,0,200);
+g1.addColorStop(0,'rgba(56,189,248,0.3)');
+g1.addColorStop(1,'rgba(56,189,248,0)');
+const g2 = ctx.createLinearGradient(0,0,0,200);
+g2.addColorStop(0,'rgba(129,140,248,0.2)');
+g2.addColorStop(1,'rgba(129,140,248,0)');
+
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: weekly.map(d=>d.day),
+    datasets: [
+      {
+        label: 'Sleep Score',
+        data: weekly.map(d=>d.score),
+        borderColor:'#38bdf8', backgroundColor: g1,
+        fill: true, tension: 0.4, pointBackgroundColor:'#38bdf8', pointRadius:5, borderWidth:2.5
+      },
+      {
+        label: 'Movement',
+        data: weekly.map(d=>d.movement),
+        borderColor:'#818cf8', backgroundColor: g2,
+        fill: true, tension: 0.4, pointBackgroundColor:'#818cf8', pointRadius:4, borderWidth:2,
+        yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color:'#94a3b8', padding:16 } } },
+    scales: {
+      y:  { grid:{color:'#1e2a3a'}, ticks:{color:'#64748b'}, title:{display:true,text:'Score',color:'#64748b'} },
+      y2: { position:'right', grid:{display:false}, ticks:{color:'#64748b'}, title:{display:true,text:'Movement m/s²',color:'#64748b'} },
+      x:  { grid:{color:'#1e2a3a'}, ticks:{color:'#64748b'} }
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Login – SleepSense AI{% endblock %}
+{% block auth_content %}
+<div class="auth-container">
+  <div class="auth-left">
+    <div class="auth-hero">
+      <div class="hero-moon">🌙</div>
+      <h1 class="hero-title">SleepSense AI</h1>
+      <p class="hero-sub">AI-Powered Sleep Disorder Detection<br>Using Smartphone Sensor Data</p>
+      <div class="hero-features">
+        <div class="feature-item"><span>📱</span> Smartphone Sensor Analysis</div>
+        <div class="feature-item"><span>🤖</span> Random Forest ML Classifier</div>
+        <div class="feature-item"><span>📊</span> Real-Time Sleep Analytics</div>
+        <div class="feature-item"><span>💡</span> AI Sleep Recommendations</div>
+      </div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-card">
+      <h2 class="auth-title">Welcome Back</h2>
+      <p class="auth-desc">Sign in to your sleep dashboard</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}{% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+        <div class="form-group">
+          <label class="form-label">USERNAME</label>
+          <input type="text" name="username" class="form-input" placeholder="Enter your username" required autofocus/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">PASSWORD</label>
+          <input type="password" name="password" class="form-input" placeholder="••••••••" required/>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Sign In →</button>
+      </form>
+
+      <div class="auth-demo">
+        <span class="demo-label">Demo Credentials:</span>
+        <code>demo</code> / <code>demo123</code>
+      </div>
+      <p class="auth-switch">No account? <a href="{{ url_for('register') }}">Create one free</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

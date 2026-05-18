@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – SleepSense AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Good {% if now_hour < 12 %}Morning{% elif now_hour < 17 %}Afternoon{% else %}Evening{% endif %}, {{ username }} 👋</h1>
+    <p class="page-sub">Here's your sleep health overview powered by smartphone sensors.</p>
+  </div>
+  <a href="{{ url_for('analysis') }}" class="btn btn-primary">+ New Analysis</a>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:rgba(56,189,248,0.15);">🎯</div>
+    <div class="kpi-body">
+      <div class="kpi-label">AVG SLEEP SCORE</div>
+      <div class="kpi-value text-accent">{{ stats.avg_score or '–' }}</div>
+      <div class="kpi-unit">out of 100</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:rgba(129,140,248,0.15);">🔬</div>
+    <div class="kpi-body">
+      <div class="kpi-label">ANALYSES DONE</div>
+      <div class="kpi-value text-purple">{{ stats.total }}</div>
+      <div class="kpi-unit">total sessions</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:rgba(52,211,153,0.15);">🏆</div>
+    <div class="kpi-body">
+      <div class="kpi-label">BEST SCORE</div>
+      <div class="kpi-value text-green">{{ stats.best_score or '–' }}</div>
+      <div class="kpi-unit">highest recorded</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:rgba(248,113,113,0.15);">⚠️</div>
+    <div class="kpi-body">
+      <div class="kpi-label">MOST FREQUENT</div>
+      <div class="kpi-value text-red" style="font-size:16px;">
+        {% if stats.disorders %}
+          {{ stats.disorders|dictsort(by='value')|reverse|list|first|first }}
+        {% else %}–{% endif %}
+      </div>
+      <div class="kpi-unit">disorder detected</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-row">
+  <div class="chart-card chart-large">
+    <div class="chart-header">
+      <h3 class="chart-title">📈 Weekly Sleep Score (Sensor Data)</h3>
+    </div>
+    <canvas id="scoreChart" height="100"></canvas>
+  </div>
+  <div class="chart-card chart-small">
+    <div class="chart-header">
+      <h3 class="chart-title">🍩 Disorder Distribution</h3>
+    </div>
+    <canvas id="disorderChart" height="200"></canvas>
+    {% if not stats.disorders %}
+      <p class="chart-empty">Run analyses to see disorder distribution.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Movement & Screen Charts -->
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">📱 Weekly Movement Levels</h3>
+    </div>
+    <canvas id="movChart" height="110"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">🖥️ Screen Usage (%) by Day</h3>
+    </div>
+    <canvas id="screenChart" height="110"></canvas>
+  </div>
+</div>
+
+<!-- Recent History Table -->
+<div class="section-card">
+  <div class="section-header">
+    <h3 class="chart-title">🕐 Recent Analyses</h3>
+    <a href="{{ url_for('history') }}" class="btn-link">View All →</a>
+  </div>
+  {% if history %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Date & Time</th><th>Movement</th><th>Noise</th><th>Screen</th><th>Disorder</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        {% for r in history %}
+        <tr>
+          <td class="td-muted">{{ r.recorded_at[:16] }}</td>
+          <td class="td-mono">{{ "%.1f"|format(r.movement) }}</td>
+          <td class="td-mono">{{ r.noise }}</td>
+          <td><span class="badge-screen {{ 'on' if r.screen else 'off' }}">{{ 'ON' if r.screen else 'OFF' }}</span></td>
+          <td><span class="badge disorder-{{ r.predicted_disorder|replace(' ','_') }}">{{ r.predicted_disorder }}</span></td>
+          <td class="td-score">{{ r.sleep_score }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🌙</div>
+    <p>No analyses yet. <a href="{{ url_for('analysis') }}">Run your first analysis</a></p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const weekly = {{ weekly | tojson }};
+const chartDefaults = {
+  color: '#94a3b8',
+  borderColor: '#1e2a3a',
+  font: { family: 'Space Grotesk', size: 12 }
+};
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = 'Space Grotesk';
+
+// Sleep Score Chart
+const scoreCtx = document.getElementById('scoreChart').getContext('2d');
+const scoreGrad = scoreCtx.createLinearGradient(0, 0, 0, 300);
+scoreGrad.addColorStop(0, 'rgba(56,189,248,0.4)');
+scoreGrad.addColorStop(1, 'rgba(56,189,248,0)');
+new Chart(scoreCtx, {
+  type: 'line',
+  data: {
+    labels: weekly.map(d => d.day),
+    datasets: [{
+      label: 'Sleep Score',
+      data: weekly.map(d => d.score),
+      borderColor: '#38bdf8',
+      backgroundColor: scoreGrad,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#38bdf8',
+      pointRadius: 5,
+      borderWidth: 2.5
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 0, max: 100, grid: { color: '#1e2a3a' }, ticks: { color: '#64748b' } },
+      x: { grid: { color: '#1e2a3a' }, ticks: { color: '#64748b' } }
+    }
+  }
+});
+
+// Movement Chart
+const movCtx = document.getElementById('movChart').getContext('2d');
+const movGrad = movCtx.createLinearGradient(0, 0, 0, 200);
+movGrad.addColorStop(0, 'rgba(129,140,248,0.4)');
+movGrad.addColorStop(1, 'rgba(129,140,248,0)');
+new Chart(movCtx, {
+  type: 'bar',
+  data: {
+    labels: weekly.map(d => d.day),
+    datasets: [{
+      label: 'Movement (m/s²)',
+      data: weekly.map(d => d.movement),
+      backgroundColor: 'rgba(129,140,248,0.7)',
+      borderColor: '#818cf8',
+      borderWidth: 1,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: '#1e2a3a' }, ticks: { color: '#64748b' } },
+      x: { grid: { display: false }, ticks: { color: '#64748b' } }
+    }
+  }
+});
+
+// Screen Usage Chart
+new Chart(document.getElementById('screenChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: weekly.map(d => d.day),
+    datasets: [{
+      label: 'Screen On (%)',
+      data: weekly.map(d => d.screen),
+      backgroundColor: 'rgba(245,158,11,0.7)',
+      borderColor: '#f59e0b',
+      borderWidth: 1,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 0, max: 100, grid: { color: '#1e2a3a' }, ticks: { color: '#64748b' } },
+      x: { grid: { display: false }, ticks: { color: '#64748b' } }
+    }
+  }
+});
+
+// Disorder Donut
+const disorders = {{ stats.disorders | tojson }};
+const dColors = {
+  'Normal Sleep': '#34d399',
+  'Insomnia': '#f87171',
+  'Poor Sleep Habit': '#f59e0b',
+  'Restless Sleep': '#a78bfa'
+};
+if (Object.keys(disorders).length > 0) {
+  new Chart(document.getElementById('disorderChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(disorders),
+      datasets: [{
+        data: Object.values(disorders),
+        backgroundColor: Object.keys(disorders).map(k => dColors[k] || '#64748b'),
+        borderColor: '#111827',
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#94a3b8', padding: 12, font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

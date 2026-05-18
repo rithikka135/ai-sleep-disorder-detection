@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Analysis – SleepSense AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🔬 Sleep Analysis</h1>
+    <p class="page-sub">Input your smartphone sensor readings for AI-powered sleep disorder prediction.</p>
+  </div>
+</div>
+
+<div class="analysis-grid">
+  <!-- Input Form -->
+  <div class="section-card">
+    <h3 class="chart-title" style="margin-bottom:24px;">📱 Sensor Input Panel</h3>
+    <form method="POST" action="{{ url_for('analysis') }}" id="analysisForm">
+
+      <!-- Movement Slider -->
+      <div class="sensor-group">
+        <div class="sensor-header">
+          <label class="form-label">PHONE MOVEMENT (m/s²)</label>
+          <span class="sensor-value" id="movVal">10.3</span>
+        </div>
+        <div class="sensor-description">Measures accelerometer activity during sleep. Higher values indicate more tossing/turning.</div>
+        <input type="range" name="movement" id="movSlider" min="0" max="55" step="0.1" value="10.3"
+               class="range-slider" oninput="document.getElementById('movVal').textContent=parseFloat(this.value).toFixed(1)"/>
+        <div class="range-labels"><span>Still (0)</span><span>Active (55)</span></div>
+      </div>
+
+      <!-- Noise Slider -->
+      <div class="sensor-group">
+        <div class="sensor-header">
+          <label class="form-label">ENVIRONMENTAL NOISE (dB)</label>
+          <span class="sensor-value" id="noiseVal">0</span>
+        </div>
+        <div class="sensor-description">Ambient sound level captured by microphone. High noise disrupts sleep cycles.</div>
+        <input type="range" name="noise" id="noiseSlider" min="0" max="100" step="1" value="0"
+               class="range-slider" oninput="document.getElementById('noiseVal').textContent=this.value"/>
+        <div class="range-labels"><span>Silent (0 dB)</span><span>Loud (100 dB)</span></div>
+      </div>
+
+      <!-- Screen Toggle -->
+      <div class="sensor-group">
+        <label class="form-label">SCREEN USAGE</label>
+        <div class="sensor-description">Whether the phone screen was active during sleep period.</div>
+        <div class="screen-toggle" style="margin-top:12px;">
+          <label class="toggle-opt">
+            <input type="radio" name="screen" value="0" checked onchange="updateScreenUI(0)"/>
+            <span class="toggle-btn off-btn">📵 Screen Off</span>
+          </label>
+          <label class="toggle-opt">
+            <input type="radio" name="screen" value="1" onchange="updateScreenUI(1)"/>
+            <span class="toggle-btn on-btn">📱 Screen On</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="sensor-group">
+        <label class="form-label">NOTES (OPTIONAL)</label>
+        <textarea name="notes" class="form-input" rows="2"
+          placeholder="e.g., woke up 3 times, had coffee at 9pm..."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" id="analyzeBtn">
+        🤖 Run AI Analysis
+      </button>
+    </form>
+  </div>
+
+  <!-- Result Panel -->
+  <div>
+    {% if result %}
+    <div class="result-card">
+      <div class="result-header">
+        <h3 class="chart-title">Prediction Result</h3>
+        <span class="badge disorder-{{ result.disorder|replace(' ','_') }}">{{ result.disorder }}</span>
+      </div>
+
+      <!-- Score Ring -->
+      <div class="score-ring-wrap">
+        <svg class="score-ring" viewBox="0 0 140 140" width="140" height="140">
+          <circle cx="70" cy="70" r="58" fill="none" stroke="#1e2a3a" stroke-width="10"/>
+          <circle cx="70" cy="70" r="58" fill="none"
+            stroke="{{ '#34d399' if result.score >= 75 else '#f59e0b' if result.score >= 50 else '#f87171' }}"
+            stroke-width="10" stroke-linecap="round"
+            stroke-dasharray="{{ 2 * 3.14159 * 58 }}"
+            stroke-dashoffset="{{ 2 * 3.14159 * 58 * (1 - result.score / 100) }}"
+            style="transform:rotate(-90deg);transform-origin:center;transition:stroke-dashoffset 1s ease;"/>
+          <text x="70" y="70" text-anchor="middle" dy="0.35em"
+            fill="{{ '#34d399' if result.score >= 75 else '#f59e0b' if result.score >= 50 else '#f87171' }}"
+            font-size="26" font-weight="800" font-family="JetBrains Mono">{{ result.score }}</text>
+          <text x="70" y="90" text-anchor="middle" fill="#64748b" font-size="11" font-family="Space Grotesk">Sleep Score</text>
+        </svg>
+      </div>
+
+      <!-- Confidence -->
+      <div class="confidence-bar-wrap">
+        <div class="conf-label">
+          <span class="form-label">ML CONFIDENCE</span>
+          <span class="conf-value">{{ result.confidence }}%</span>
+        </div>
+        <div class="conf-bar-track">
+          <div class="conf-bar-fill" style="width:{{ result.confidence }}%"></div>
+        </div>
+      </div>
+
+      <!-- Probabilities -->
+      <div class="prob-grid">
+        {% for disorder, pct in result.probabilities.items() %}
+        <div class="prob-row">
+          <span class="prob-label">{{ disorder }}</span>
+          <div class="prob-track">
+            <div class="prob-fill" style="width:{{ pct }}%;background:{{ '#34d399' if 'Normal' in disorder else '#f87171' if 'Insomnia' in disorder else '#f59e0b' if 'Poor' in disorder else '#a78bfa' }};"></div>
+          </div>
+          <span class="prob-pct">{{ pct }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Recommendations -->
+      <div class="tips-section">
+        <div class="form-label" style="margin-bottom:10px;">AI RECOMMENDATIONS</div>
+        {% set tips_map = {
+          'Normal Sleep': ['Great job! Keep your consistent schedule.','Aim for 7–9 hours per night.','Limit caffeine after 2 PM.'],
+          'Insomnia': ['Try 4-7-8 breathing before bed.','Avoid screens 1 hour before sleep.','Keep bedroom cool at 18–20°C.','Consider white noise to mask sounds.'],
+          'Poor Sleep Habit': ['Set a phone lock time 45 min before bed.','Replace screen time with reading.','Avoid heavy meals 3 hours before sleep.'],
+          'Restless Sleep': ['Try progressive muscle relaxation.','Limit alcohol — disrupts REM sleep.','Evaluate mattress and pillow comfort.','Magnesium glycinate may help (consult doctor).']
+        } %}
+        {% for tip in tips_map.get(result.disorder, [])[:3] %}
+        <div class="tip-item">
+          <span class="tip-icon">💡</span>
+          <span class="tip-text">{{ tip }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Probability Chart -->
+    <div class="section-card" style="margin-top:16px;">
+      <h3 class="chart-title" style="margin-bottom:16px;">Class Probability Distribution</h3>
+      <canvas id="probChart" height="160"></canvas>
+    </div>
+
+    {% else %}
+    <div class="section-card placeholder-card">
+      <div class="placeholder-icon">🌙</div>
+      <h3 class="placeholder-title">Ready to Analyze</h3>
+      <p class="placeholder-text">Set your sensor values and click <strong>Run AI Analysis</strong> to get your sleep disorder prediction using our trained Random Forest model.</p>
+      <div class="model-info">
+        <div class="model-item"><span class="model-dot green"></span> Random Forest (150 trees)</div>
+        <div class="model-item"><span class="model-dot blue"></span> 4 Disorder Classes</div>
+        <div class="model-item"><span class="model-dot purple"></span> Real Sensor Data</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+{% if result %}
+<script>
+const probs = {{ result.probabilities | tojson }};
+const dColors = {
+  'Normal Sleep':'#34d399','Insomnia':'#f87171',
+  'Poor Sleep Habit':'#f59e0b','Restless Sleep':'#a78bfa'
+};
+new Chart(document.getElementById('probChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(probs),
+    datasets:[{
+      data: Object.values(probs),
+      backgroundColor: Object.keys(probs).map(k=>dColors[k]+'bb'),
+      borderColor: Object.keys(probs).map(k=>dColors[k]),
+      borderWidth: 2,
+      borderRadius: 8
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { min:0, max:100, grid:{color:'#1e2a3a'}, ticks:{color:'#64748b',callback:v=>v+'%'} },
+      y: { grid:{display:false}, ticks:{color:'#94a3b8'} }
+    }
+  }
+});
+</script>
+{% endif %}
+<script>
+function updateScreenUI(val) {
+  document.querySelectorAll('.toggle-btn').forEach((el,i)=>{
+    el.style.background = (i===val) ? (i===0 ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)') : 'transparent';
+    el.style.borderColor = (i===val) ? (i===0 ? '#34d399' : '#f87171') : '#1e2a3a';
+    el.style.color = (i===val) ? (i===0 ? '#34d399' : '#f87171') : '#64748b';
+  });
+}
+updateScreenUI(0);
+
+document.getElementById('analysisForm').addEventListener('submit', function(){
+  const btn = document.getElementById('analyzeBtn');
+  btn.textContent = '⚙️ Analyzing...';
+  btn.disabled = true;
+});
+</script>
+{% endblock %}
